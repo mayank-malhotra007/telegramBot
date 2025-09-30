@@ -1,0 +1,86 @@
+
+TgBot is a library which provides 4 classes: Bot, EventHandler , Api, Longpoll.
+TgBot::Bot
+TgBot::EventHandler
+TgBot::Api
+TgBot::LongPoll
+
+
+class Bot {
+public:
+    TgBot::Api& getApi();                    // Returns the API interface to make requests
+    TgBot::EventHandler& getEvents();        // Returns the EventHandler for registering handlers
+    TgBot::LongPoll longPoll;                // LongPoll object to listen to incoming updates
+    std::string token;                        // Bot token
+
+    Bot(const std::string& token);           // Constructor, initializes bot with token
+};
+
+example usage:
+TgBot::Bot bot("YOUR_TOKEN_HERE");
+bot.getEvents().onAnyMessage([&bot](TgBot::Message::Ptr message) {
+    std::cout << "Received: " << message->text << std::endl;
+});
+bot.getApi().sendMessage(chatId, "Hello");
+bot.longPoll.start();
+
+
+
+class EventHandler {
+public:
+    void onCommand(const std::string& command, std::function<void(TgBot::Message::Ptr)> callback);
+    void onAnyMessage(std::function<void(TgBot::Message::Ptr)> callback);
+    void onCallbackQuery(std::function<void(TgBot::CallbackQuery::Ptr)> callback);
+};
+
+example usage:
+bot.getEvents().onCommand("start", [](TgBot::Message::Ptr message){
+    std::cout << "Start command received from " << message->from->username << std::endl;
+});
+bot.getEvents().onAnyMessage([](TgBot::Message::Ptr message){
+    std::cout << "Message: " << message->text << std::endl;
+});
+
+
+
+class Api {
+public:
+    TgBot::User::Ptr getMe();                                // Get bot info
+    void sendMessage(int64_t chatId, const std::string& text);
+    void sendPhoto(int64_t chatId, const std::string& filePath, const std::string& caption = "");
+    void sendDocument(int64_t chatId, const std::string& filePath, const std::string& caption = "");
+};
+
+
+example usage:
+auto me = bot.getApi().getMe();
+bot.getApi().sendMessage(chatId, "Hello world!");
+
+
+Bot
+ Api           (handles Telegram API calls)
+ EventHandler  (registers callbacks for incoming messages)
+ LongPoll      (polls updates from Telegram, triggers EventHandler)
+
+
+Telegram Server ->  LongPoll ->  Bot->  EventHandler ->  User Callback (lambda)
+LongPoll fetches updates
+TgBot::LongPoll continuously polls the Telegram API using the bot’s token.
+Each poll returns a list of updates (messages, commands, edited messages, callback queries, etc.).
+
+LongPoll passes updates to the Bot
+When LongPoll receives updates, it doesn’t handle them directly.
+It passes each update to the TgBot::Bot object that it was constructed with.
+
+Bot forwards updates to EventHandler
+The Bot object has an EventHandler instance inside it (accessible via bot.getEvents()).
+The Bot calls the appropriate callback in EventHandler depending on the type of update.
+For a text message: onAnyMessage or onCommand gets triggered.
+For a callback query: onCallbackQuery is triggered, etc.
+
+EventHandler triggers the user-defined lambda
+The users callback function (lambda) that you registered with onAnyMessage or onCommand is executed.
+
+
+
+

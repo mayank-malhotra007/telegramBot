@@ -1,0 +1,91 @@
+### TgBot C++ Library - Class Overview
+
+#### 1. Bot
+
+**Description:**
+The `Bot` class is the main entry point for interacting with the Telegram Bot API. It holds configuration, manages API calls, and contains an `EventHandler` instance to handle incoming updates.
+
+**Key responsibilities:**
+
+* Store the bot token.
+* Provide access to API methods.
+* Provide access to event handling via `getEvents()`.
+
+**Key methods:**
+
+* `Bot(const std::string& token)`: Constructor that initializes the bot with a token.
+* `getEvents()`: Returns a reference to the internal `EventHandler` object.
+* `getApi()`: Returns a reference to the `Api` object for making API calls.
+
+---
+
+#### 2. EventHandler
+
+**Description:**
+The `EventHandler` class handles registration and triggering of callbacks for different types of messages or commands. It acts as a mediator between incoming messages and user-defined functions.
+
+**Key responsibilities:**
+
+* Store callbacks for commands, messages, and other events.
+* Invoke the correct callback when a new message or update is received.
+
+**Key methods:**
+
+* `onAnyMessage(std::function<void(Message::Ptr)> callback)`: Registers a callback for all incoming messages.
+* `onCommand(const std::string& cmd, std::function<void(Message::Ptr)> callback)`: Registers a callback for a specific command.
+* `onInlineQuery(std::function<void(InlineQuery::Ptr)> callback)`: Handles inline queries.
+
+**Example:**
+
+```cpp
+bot.getEvents().onAnyMessage([](TgBot::Message::Ptr message) {
+    std::cout << "Received: " << message->text << std::endl;
+});
+```
+
+---
+
+#### 3. Api
+
+**Description:**
+The `Api` class wraps the Telegram Bot API HTTP methods. It is used to send messages, edit messages, handle files, etc.
+
+**Key responsibilities:**
+
+* Make HTTP requests to Telegram API endpoints.
+* Serialize and deserialize JSON payloads.
+* Return objects representing Telegram entities (Message, User, Chat, etc.).
+
+**Key methods:**
+
+* `sendMessage(chatId, text)`: Sends a message to a chat.
+* `getMe()`: Retrieves bot's information.
+* `getFile(fileId)`: Retrieves a file object for downloading.
+
+**Example:**
+
+```cpp
+bot.getApi().sendMessage(chatId, "Hello, world!");
+```
+
+---
+
+#### How It Works Together
+
+1. **Bot** holds the token, the API interface, and the `EventHandler`.
+2. **EventHandler** stores callbacks for different events (`onAnyMessage`, `onCommand`, etc.).
+3. **Api** allows sending messages or interacting with Telegram from inside a callback.
+
+**Workflow example:**
+
+```cpp
+TgBot::Bot bot("TOKEN");
+
+bot.getEvents().onAnyMessage([&bot](TgBot::Message::Ptr msg) {
+    bot.getApi().sendMessage(msg->chat->id, "Received: " + msg->text);
+});
+
+TgBot::LongPoll longPoll(bot);
+longPoll.start(); // starts listening and triggers EventHandler callbacks
+```
+
