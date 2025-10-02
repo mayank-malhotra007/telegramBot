@@ -1,9 +1,25 @@
 #include <tgbot/tgbot.h>
 #include <iostream>
+#include <fstream>
+#include <string>
 
 int main() {
     // Replace with your bot token
-    std::string token = "YOUR_BOT_TOKEN_HERE";
+    std::ifstream f("/home/megatron/Documents/arduinoGigaBot_token.txt");
+    if(!f.is_open())
+    {
+     std::cerr<<"failed to open file"<<std::endl;
+    }
+    else {
+     std::cout<<"file opened"<<std::endl;
+    }
+    
+    std::string token;
+    
+    std::getline(f,token);
+    //std::cout<<"token: "<<token<<std::endl;
+
+    int64_t chatId = -4885874152; // your chat ID
     TgBot::Bot bot(token);
 
     // Handler for /start command
@@ -21,18 +37,20 @@ int main() {
         bot.getApi().sendMessage(message->chat->id, "Message received: " + message->text);
     });
 
-    std::cout << "Bot is now listening for messages..." << std::endl;
+   // std::cout << "Bot is now listening for messages..." << std::endl;
 
     // Long-polling loop
     try {
         TgBot::TgLongPoll longPoll(bot);
         while (true) {
             longPoll.start();
+	    std::cout<< "polling telegram"<<std::endl;
         }
     } catch (std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
 
+    f.close();
     return 0;
 }
 
