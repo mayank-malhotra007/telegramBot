@@ -5,12 +5,15 @@
 #include <unistd.h>
 #include <cstring>
 
-int main() {
+int arduinoPortSetup(const char* terminal_path)
+{
+
+    int fd = open(terminal_path, O_RDWR | O_NOCTTY);
+    if(fd<0){
+    
     // Open serial port
-    int fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY);
-    if (fd < 0) {
         perror("open");
-        return 1;
+        return -1;
     }
 
     // Configure serial
@@ -18,7 +21,7 @@ int main() {
     if (tcgetattr(fd, &tty) != 0) {
         perror("tcgetattr");
         close(fd);
-        return 1;
+        return -1;
     }
 
     cfsetospeed(&tty, B9600);
@@ -28,13 +31,20 @@ int main() {
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         perror("tcsetattr");
         close(fd);
-        return 1;
+        return- 1;
     }
 
-    // Telegram Bot
-    
-     // Replace with your bot token
-    std::ifstream f("/home/megatron/Documents/arduinoGigaBot_token.txt");
+    //upon success, return fd
+    return fd;
+}
+
+
+// ----- Telegram Token Fetch ------
+std::string getTelegramToken(std::string path)
+{
+    //open the file
+    std::ifstream f(path);
+   
     if(!f.is_open())
     {
      std::cerr<<"failed to open file"<<std::endl;
@@ -44,10 +54,38 @@ int main() {
     }
     
     std::string token;
-    
     std::getline(f,token);
    
-    TgBot::Bot bot(token);
+    //close the file
+    f.close();
+    return token;
+
+}
+
+
+
+// **** MAIN ****** 
+int main() {
+   
+    //Open the serial port at arduino
+    const char* terminal_path = "/dev/ttyACM0";
+    int fd = arduinoPortSetup(terminal_path);
+   
+    if(fd){
+    	std::cout<<"raspi arduino port connected"<<std::endl;
+    }else {
+        std::cout <<"port not connected"<<std::endl;
+    }
+
+
+    //Fetch telegram token
+    std::string path_to_token = "/home/megatron/Documents/arduinoGigaBot_token.txt";
+    std::string tk = getTelegramToken(path_to_token);
+    std::cout<<"token: "<<tk<<std::endl;
+
+    // pass token to bot object, constructor call
+    TgBot::Bot bot(tk);
+
     int64_t chatId = -4885874152; // your chat ID
     
     // Start message
@@ -70,7 +108,8 @@ int main() {
         }
     });
 
-    // Long polling loop
+
+    // poll the telegram API for messages
     try {
         TgBot::TgLongPoll longPoll(bot);
         std::cout << "Bot started successfully!" << std::endl;
@@ -81,7 +120,7 @@ int main() {
         std::cerr << "Error: " << e.what() << std::endl;
     }
 
-    f.close();
+   
     close(fd);
     return 0;
 }
