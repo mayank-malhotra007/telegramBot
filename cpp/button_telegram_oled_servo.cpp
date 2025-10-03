@@ -4,7 +4,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
-
+#include <thread>
+#include <chrono>
+#include <atomic>
 int arduinoPortSetup(const char* terminal_path)
 {
 
@@ -86,7 +88,7 @@ int main() {
     // pass token to bot object, constructor call
     TgBot::Bot bot(tk);
 
-    int64_t chatId = -4885874152; // your chat ID
+    std::atomic<int64_t> chatId{-1}; // your chat ID
     
     // Start message
     bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
@@ -94,8 +96,9 @@ int main() {
     });
 
     // Any incoming message
-    bot.getEvents().onAnyMessage([&bot, fd](TgBot::Message::Ptr message) {
-        std::cout << "Received message from "
+    bot.getEvents().onAnyMessage([&bot, fd, &chatId](TgBot::Message::Ptr message) {
+                    chatId = message->chat->id;
+		    std::cout << "Received message from "
                   << (message->chat->username.empty() ? "unknown" : message->chat->username)
                   << ": " << message->text << std::endl;
 
@@ -107,6 +110,21 @@ int main() {
             bot.getApi().sendMessage(message->chat->id, "Turning OFF");
         }
     });
+// OS invokes this lambda.operator()() , atomic objects like chatId only captured by reference
+std::thread serialThread([fd, &bot, &chatId]() {
+    char buf[16];
+    while (true) {
+        int n = read(fd, buf, sizeof(buf)-1);
+        if (n > 0) {
+            buf[n] = '\0';  // null-terminate
+            std::cout << "buffer: " << buf << std::endl;
+            bot.getApi().sendMessage(chatId, "Button Pressed");
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); 
+    }
+});
+serialThread.detach(); // run independently
+
 
 
     // poll the telegram API for messages
@@ -114,7 +132,9 @@ int main() {
         TgBot::TgLongPoll longPoll(bot);
         std::cout << "Bot started successfully!" << std::endl;
         while (true) {
-            longPoll.start();
+            longPoll.start(); //this is blocking operation
+            
+	    // use a separate thread to poll Serial port
         }
     } catch (std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

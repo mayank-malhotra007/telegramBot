@@ -81,7 +81,7 @@ int main() {
     //Fetch telegram token
     std::string path_to_token = "/home/megatron/Documents/arduinoGigaBot_token.txt";
     std::string tk = getTelegramToken(path_to_token);
-    //std::cout<<"token: "<<tk<<std::endl;
+    std::cout<<"token: "<<tk<<std::endl;
 
     // pass token to bot object, constructor call
     TgBot::Bot bot(tk);
